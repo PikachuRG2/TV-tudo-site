@@ -106,12 +106,28 @@ function resetVideo(video){
     video.pause();
   }catch(e){}
   video.removeAttribute("src");
+  var src = document.getElementById("videoSource");
+  if(src){
+    src.removeAttribute("src");
+    src.removeAttribute("type");
+  }
   video.load();
 }
 
-function playNative(video, url){
+function playNative(video, url, mime){
   resetVideo(video);
-  video.src = url;
+  var src = document.getElementById("videoSource");
+  if(src){
+    src.setAttribute("src", url);
+    if(mime){
+      src.setAttribute("type", mime);
+    } else {
+      src.removeAttribute("type");
+    }
+    video.load();
+  } else {
+    video.src = url;
+  }
   video.play().catch(()=>{});
 }
 
@@ -143,12 +159,12 @@ function playHLS(video, url){
           hls.recoverMediaError();
         } else {
           hls.destroy();
-          playNative(video, url);
+          playNative(video, url, "application/vnd.apple.mpegurl");
         }
       }
     });
   } else {
-    playNative(video, url);
+    playNative(video, url, "application/vnd.apple.mpegurl");
   }
 }
 
@@ -190,6 +206,6 @@ function assistir(link){
   if(isHLS(link)){
     playHLS(video, link);
   } else {
-    playNative(video, link);
+    playNative(video, link, undefined);
   }
 }
