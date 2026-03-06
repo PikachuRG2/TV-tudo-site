@@ -14,7 +14,29 @@ export default {
     const t = u.searchParams.get("url");
     if (!t) return new Response("missing url", { status: 400 });
     const tClean = t.replace(/%09/gi, "/").replace(/\s+/g, "");
-    const target = new URL(tClean);
+    let target;
+    const cors = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET,OPTIONS",
+      "Access-Control-Allow-Headers": "*",
+      "Cache-Control": "no-cache, no-store, must-revalidate"
+    };
+    try{
+      target = new URL(tClean);
+    }catch(e){
+      const m = tClean.match(/^(https?:\/\/)([^\/]+)(.*)$/i);
+      if(m){
+        const rest = m[3] || "";
+        const fixed = m[1] + m[2] + (rest.startsWith("/") ? rest : ("/" + rest));
+        try{
+          target = new URL(fixed);
+        }catch(e2){
+          return new Response("bad url", { status: 400, headers: cors });
+        }
+      }else{
+        return new Response("bad url", { status: 400, headers: cors });
+      }
+    }
     const referer = u.searchParams.get("referer") || "https://rg2tvpro.blogspot.com/";
     const ua = u.searchParams.get("ua") || "Mozilla/5.0";
     const cookie = u.searchParams.get("cookie") || "";
