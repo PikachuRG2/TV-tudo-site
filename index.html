@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RG2 TV PRO</title>
+
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+
+<body>
+
+<header>📺RG2 TV PRO📺</header>
+
+<div id="loginArea">
+<button onclick="login()">Entrar com Google</button>
+</div>
+
+<div id="app" style="display:none;">
+
+<div class="player">
+<video id="video" controls></video>
+</div>
+
+<div class="categorias">
+<button onclick="carregar('esportes')">Esportes</button>
+<button onclick="carregar('tv')">TV</button>
+</div>
+
+<div id="lista"></div>
+
+</div>
+
+<script src="firebase.js"></script>
+
+<script>
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js");
+}
+</script>
+
+</body>
+</html>

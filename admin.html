@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Painel Admin</title>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script> <!-- ADICIONA ESSA LINHA -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+<script src="firebase.js"></script>
+</head>
+<body>
+
+<h2>Painel Admin</h2>
+
+<div id="adminArea" style="display:none;">
+
+<input id="nome" placeholder="Nome do Canal">
+<select id="categoria">
+<option value="esportes">Esportes</option>
+<option value="tv">TV</option>
+</select>
+<input id="link" placeholder="Link m3u8">
+<button onclick="salvar()">Salvar</button>
+
+<hr>
+
+<h3>Canais cadastrados</h3>
+<div id="listaCanais"></div>
+
+</div>
+
+<script>
+
+var adminEmail = "rafael2019rg@gmail.com"; // 👈 COLOQUE SEU EMAIL AQUI
+
+firebase.auth().onAuthStateChanged(function(user){
+  if(user){
+    if(user.email === adminEmail){
+      document.getElementById("adminArea").style.display = "block";
+      carregarCanais();
+    } else {
+      alert("Você não é administrador!");
+      window.location.href = "index.html";
+    }
+  } else {
+    var provider = new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithPopup(provider);
+  }
+});
+
+function salvar(){
+  db.collection("canais").add({
+    nome: nome.value,
+    categoria: categoria.value,
+    link: link.value
+  }).then(()=>{
+    alert("Canal salvo!");
+    carregarCanais();
+  });
+}
+function carregarCanais(){
+  var lista = document.getElementById("listaCanais");
+  lista.innerHTML = "";
+
+  db.collection("canais").get().then(snapshot=>{
+    snapshot.forEach(doc=>{
+      var c = doc.data();
+
+      lista.innerHTML += `
+        <div style="margin-bottom:10px; padding:10px; background:#eee; color:#000;">
+          <b>${c.nome}</b> (${c.categoria})
+          <button onclick="excluir('${doc.id}')" style="float:right; background:red; color:white;">Excluir</button>
+        </div>
+      `;
+    });
+  });
+}
+function excluir(id){
+  if(confirm("Deseja excluir este canal?")){
+    db.collection("canais").doc(id).delete().then(()=>{
+      carregarCanais();
+    });
+  }
+}
+</script>
+
+</body>
+</html>

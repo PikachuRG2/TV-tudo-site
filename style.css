@@ -1,0 +1,105 @@
+body{
+  margin:0;
+  background:#111;
+  color:#fff;
+  font-family:Arial, sans-serif;
+}
+
+/* LOGIN AREA */
+#loginArea {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 80vh; /* Ocupa quase a tela toda para centralizar verticalmente */
+}
+
+#loginArea button {
+  background: #4285F4;
+  color: white;
+  font-weight: bold;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  transition: 0.3s;
+}
+
+#loginArea button:hover {
+  background: #357ae8;
+  transform: scale(1.05);
+}
+
+/* HEADER */
+header{
+  background:#000;
+  padding:20px;
+  text-align:center;
+  font-size:24px;
+}
+
+/* PLAYER */
+.player{
+  width:100%;
+  height:60vh;
+  background:black;
+}
+
+video{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+/* BOTÕES CATEGORIA */
+.categorias{
+  display:flex;
+  justify-content:center;
+  gap:20px;
+  padding:20px;
+  flex-wrap:wrap;
+}
+
+button{
+  padding:15px 30px;
+  font-size:18px;
+  border:none;
+  border-radius:30px;
+  cursor:pointer;
+}
+
+/* LISTA DE CANAIS */
+#lista{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:20px;
+  padding:20px;
+}
+
+.canal{
+  background:#222;
+  padding:25px;
+  border-radius:15px;
+  text-align:center;
+  font-size:18px;
+  cursor:pointer;
+  transition:0.3s;
+}
+
+/* EFEITO FOCO (IMPORTANTE PARA TV) */
+.canal:focus,
+button:focus{
+  outline:3px solid #00ffcc;
+  background:#333;
+}
+
+/* RESPONSIVO CELULAR */
+@media(max-width:600px){
+  .player{
+    height:250px;
+  }
+  button{
+    padding:10px 20px;
+    font-size:16px;
+  }
+  .canal{
+    padding:15px;
+    font-size:16px;
+  }
+}
