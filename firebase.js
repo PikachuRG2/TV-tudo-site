@@ -67,6 +67,7 @@ function carregar(cat){
 var hls;
 var vjsPlayer;
 
+const WORKER_PREFIX = "https://listaiptv38.rafael2019rg.workers.dev/";
 const PROXY_PREFIX = "https://cors.isomorphic-git.org/";
 
 function normalizeUrl(url){
@@ -106,8 +107,12 @@ function resolveUrl(base, ref){
 
 function withProxy(url){
   const u = normalizeUrl(url);
-  const prefix = PROXY_PREFIX.endsWith("/") ? PROXY_PREFIX : (PROXY_PREFIX + "/");
-  if(/^https?:\/\//i.test(u)) return prefix + u;
+  if(WORKER_PREFIX){
+    const w = WORKER_PREFIX.endsWith("/") ? WORKER_PREFIX : (WORKER_PREFIX + "/");
+    return w + "?url=" + encodeURIComponent(u);
+  }
+  const p = PROXY_PREFIX.endsWith("/") ? PROXY_PREFIX : (PROXY_PREFIX + "/");
+  if(/^https?:\/\//i.test(u)) return p + u;
   return u;
 }
 
