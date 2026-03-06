@@ -67,6 +67,11 @@ function carregar(cat){
 var hls;
 
 const PROXY_PREFIX = "https://listaiptv38.rafael2019rg.workers.dev/";
+const PROXIES = [
+  { base: PROXY_PREFIX, mode: "path" },
+  { base: "https://cors.isomorphic-git.org/", mode: "path" },
+  { base: PROXY_PREFIX, mode: "query" }
+];
 const BLOCKED_HOSTS = ["cdn.jmvstream.com","jmvstream.com"];
 
 function normalizeUrl(url){
@@ -112,13 +117,24 @@ function resolveUrl(base, ref){
   }
 }
 
-function withProxy(url){
-  if(!PROXY_PREFIX) return url;
-  const u = normalizeUrl(url);
-  if(u.startsWith(PROXY_PREFIX)) return u;
-  const prefix = PROXY_PREFIX.endsWith("/") ? PROXY_PREFIX : (PROXY_PREFIX + "/");
-  if(/^https?:\/\//i.test(u)) return prefix + u;
-  return u;
+function buildProxyUrl(base, mode, target){
+  const t = normalizeUrl(target);
+  let b = base || "";
+  b = b.endsWith("/") ? b : (b + "/");
+  if(mode === "query"){
+    const sep = b.includes("?") ? "&" : "?";
+    return b + sep + "url=" + encodeURIComponent(t);
+  }
+  return b + t;
+}
+
+function proxyCandidates(target){
+  const t = normalizeUrl(target);
+  const result = [t];
+  for(const p of PROXIES){
+    result.push(buildProxyUrl(p.base, p.mode, t));
+  }
+  return result;
 }
 
 function resetVideo(video){
@@ -151,12 +167,18 @@ function playNative(video, url, mime){
   video.play().catch(()=>{});
 }
 
-function playHLS(video, url, proxied){
+function startHLSWithCandidates(video, urls){
   if(hls){
     hls.destroy();
   }
-  if(Hls.isSupported()){
-    hls = new Hls({
+  if(!Hls.isSupported()){
+    playNative(video, urls[0], "application/vnd.apple.mpegurl");
+    return;
+  }
+  let idx = 0;
+  const tryUrl = (u) => {
+    if(hls) hls.destroy();
+    const instance = new Hls({
       enableWorker: true,
       lowLatencyMode: true,
       maxBufferLength: 10,
@@ -164,33 +186,34 @@ function playHLS(video, url, proxied){
       startLevel: -1,
       liveSyncDurationCount: 3
     });
-    hls.loadSource(url);
-    hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, function(){
+    hls = instance;
+    instance.loadSource(u);
+    instance.attachMedia(video);
+    instance.on(Hls.Events.MANIFEST_PARSED, function(){
       video.play().catch(()=>{});
     });
-    hls.on(Hls.Events.ERROR, function(_, data){
+    instance.on(Hls.Events.ERROR, function(_, data){
       if(!data) return;
       if(data.fatal){
         if(data.type === Hls.ErrorTypes.NETWORK_ERROR){
           alert("Erro de rede ao carregar HLS. O servidor pode bloquear CORS/Referer.");
-          if(!proxied){
-            hls.destroy();
-            playHLS(video, withProxy(url), true);
+          idx++;
+          if(idx < urls.length){
+            instance.destroy();
+            tryUrl(urls[idx]);
             return;
           }
-          hls.startLoad();
+          instance.startLoad();
         } else if(data.type === Hls.ErrorTypes.MEDIA_ERROR){
-          hls.recoverMediaError();
+          instance.recoverMediaError();
         } else {
-          hls.destroy();
-          playNative(video, url, "application/vnd.apple.mpegurl");
+          instance.destroy();
+          playNative(video, u, "application/vnd.apple.mpegurl");
         }
       }
     });
-  } else {
-    playNative(video, url, "application/vnd.apple.mpegurl");
-  }
+  };
+  tryUrl(urls[0]);
 }
 
 function assistir(link){
@@ -206,11 +229,17 @@ function assistir(link){
   }
 
   if(isM3U(link)){
-    const hostM3U = getHost(link);
-    const m3uUrl = BLOCKED_HOSTS.indexOf(hostM3U) !== -1 ? withProxy(link) : link;
-    fetch(m3uUrl)
+    const candidatesM3U = proxyCandidates(link);
+    let fetched = false;
+    const tryFetchSeq = (i) => {
+      if(fetched || i >= candidatesM3U.length){
+        alert("Não foi possível abrir a playlist .m3u");
+        return;
+      }
+      fetch(candidatesM3U[i])
       .then(r=>r.text())
       .then(txt=>{
+        fetched = true;
         const entries = parseM3U(txt);
         if(entries.length === 0){
           alert("Playlist M3U vazia");
@@ -218,30 +247,24 @@ function assistir(link){
         }
         const first = normalizeUrl(resolveUrl(link, entries[0]));
         if(isHLS(first)){
-          const host = getHost(first);
-          if(BLOCKED_HOSTS.indexOf(host) !== -1){
-            playHLS(video, withProxy(first), true);
-          } else {
-            playHLS(video, first, false);
-          }
+          const urls = proxyCandidates(first);
+          startHLSWithCandidates(video, urls);
         } else {
           playNative(video, first);
         }
       })
       .catch(err=>{
         console.error("Erro ao carregar M3U:", err);
-        alert("Não foi possível abrir a playlist .m3u");
+        tryFetchSeq(i+1);
       });
+    };
+    tryFetchSeq(0);
     return;
   }
 
   if(isHLS(link)){
-    const host = getHost(link);
-    if(BLOCKED_HOSTS.indexOf(host) !== -1){
-      playHLS(video, withProxy(link), true);
-    } else {
-      playHLS(video, link, false);
-    }
+    const urls = proxyCandidates(link);
+    startHLSWithCandidates(video, urls);
   } else {
     playNative(video, link, undefined);
   }
