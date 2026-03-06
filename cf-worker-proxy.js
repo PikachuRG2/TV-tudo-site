@@ -13,15 +13,14 @@ export default {
     const u = new URL(req.url);
     const t = u.searchParams.get("url");
     if (!t) return new Response("missing url", { status: 400 });
-    const target = new URL(t);
+    const tClean = t.replace(/%09/gi, "/").replace(/\s+/g, "");
+    const target = new URL(tClean);
     const referer = u.searchParams.get("referer") || "https://rg2tvpro.blogspot.com/";
     const ua = u.searchParams.get("ua") || "Mozilla/5.0";
-    const origin = u.searchParams.get("origin") || u.origin;
     const cookie = u.searchParams.get("cookie") || "";
     const r = await fetch(target.href, {
       headers: {
         "User-Agent": ua,
-        "Origin": origin,
         "Referer": referer,
         "Cookie": cookie
       }
@@ -39,7 +38,6 @@ export default {
           next.searchParams.set("url", abs);
           next.searchParams.set("referer", referer);
           next.searchParams.set("ua", ua);
-          next.searchParams.set("origin", origin);
           if (cookie) next.searchParams.set("cookie", cookie);
           const prox = next.href;
           return prox;

@@ -116,7 +116,6 @@ function withProxy(url){
     params.set("url", u);
     params.set("referer", WORKER_REFERER);
     params.set("ua", WORKER_UA);
-    params.set("origin", window.location.origin);
     if(cookie) params.set("cookie", cookie);
     return w + "?" + params.toString();
   }
