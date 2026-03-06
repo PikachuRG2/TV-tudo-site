@@ -27,8 +27,8 @@ export default {
       }
     });
     const ct = r.headers.get("content-type") || "";
-    let body = await r.text();
     if (ct.includes("application/vnd.apple.mpegurl") || target.pathname.endsWith(".m3u8")) {
+      let body = await r.text();
       const base = target;
       const lines = body.split(/\r?\n/).map(line => {
         const s = line.trim();
@@ -48,15 +48,19 @@ export default {
         }
       });
       body = lines.join("\n");
+      const h = new Headers(r.headers);
+      h.set("Access-Control-Allow-Origin", "*");
+      h.set("Access-Control-Allow-Methods", "GET,OPTIONS");
+      h.set("Access-Control-Allow-Headers", "*");
+      h.set("Cache-Control", "no-cache, no-store, must-revalidate");
+      h.set("content-type", "application/vnd.apple.mpegurl");
+      return new Response(body, { status: r.status, headers: h });
     }
     const h = new Headers(r.headers);
     h.set("Access-Control-Allow-Origin", "*");
     h.set("Access-Control-Allow-Methods", "GET,OPTIONS");
     h.set("Access-Control-Allow-Headers", "*");
     h.set("Cache-Control", "no-cache, no-store, must-revalidate");
-    if (target.pathname.endsWith(".m3u8")) {
-      h.set("content-type", "application/vnd.apple.mpegurl");
-    }
-    return new Response(body, { status: r.status, headers: h });
+    return new Response(r.body, { status: r.status, headers: h });
   }
 }

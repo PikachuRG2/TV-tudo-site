@@ -149,7 +149,7 @@ function playWithVideoJS(video, url){
       vjsPlayer.src({ src: url, type: "application/x-mpegURL" });
       vjsPlayer.play();
     } else {
-      vjsPlayer = window.videojs(video, { liveui: true });
+      vjsPlayer = window.videojs(video, { liveui: true, html5: { vhs: { overrideNative: true } } });
       vjsPlayer.src({ src: url, type: "application/x-mpegURL" });
       vjsPlayer.play();
     }
