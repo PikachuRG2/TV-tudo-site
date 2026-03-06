@@ -66,6 +66,9 @@ function carregar(cat){
 
 var hls;
 
+const PROXY_PREFIX = "https://listaiptv38.rafael2019rg.workers.dev/";
+const BLOCKED_HOSTS = ["cdn.jmvstream.com","jmvstream.com"];
+
 function normalizeUrl(url){
   let u = String(url || "").trim();
   u = u.replace(/\\/g, "/");
@@ -80,6 +83,14 @@ function isM3U(url){
 
 function isHLS(url){
   return /\.m3u8($|\?)/i.test(url);
+}
+
+function getHost(url){
+  try{
+    return new URL(url).host.toLowerCase();
+  }catch(e){
+    return "";
+  }
 }
 
 function parseM3U(text){
@@ -99,6 +110,15 @@ function resolveUrl(base, ref){
   }catch(e){
     return ref;
   }
+}
+
+function withProxy(url){
+  if(!PROXY_PREFIX) return url;
+  const u = normalizeUrl(url);
+  if(u.startsWith(PROXY_PREFIX)) return u;
+  const prefix = PROXY_PREFIX.endsWith("/") ? PROXY_PREFIX : (PROXY_PREFIX + "/");
+  if(/^https?:\/\//i.test(u)) return prefix + u;
+  return u;
 }
 
 function resetVideo(video){
@@ -131,7 +151,7 @@ function playNative(video, url, mime){
   video.play().catch(()=>{});
 }
 
-function playHLS(video, url){
+function playHLS(video, url, proxied){
   if(hls){
     hls.destroy();
   }
@@ -154,6 +174,11 @@ function playHLS(video, url){
       if(data.fatal){
         if(data.type === Hls.ErrorTypes.NETWORK_ERROR){
           alert("Erro de rede ao carregar HLS. O servidor pode bloquear CORS/Referer.");
+          if(!proxied){
+            hls.destroy();
+            playHLS(video, withProxy(url), true);
+            return;
+          }
           hls.startLoad();
         } else if(data.type === Hls.ErrorTypes.MEDIA_ERROR){
           hls.recoverMediaError();
@@ -181,7 +206,9 @@ function assistir(link){
   }
 
   if(isM3U(link)){
-    fetch(link)
+    const hostM3U = getHost(link);
+    const m3uUrl = BLOCKED_HOSTS.indexOf(hostM3U) !== -1 ? withProxy(link) : link;
+    fetch(m3uUrl)
       .then(r=>r.text())
       .then(txt=>{
         const entries = parseM3U(txt);
@@ -191,7 +218,12 @@ function assistir(link){
         }
         const first = normalizeUrl(resolveUrl(link, entries[0]));
         if(isHLS(first)){
-          playHLS(video, first);
+          const host = getHost(first);
+          if(BLOCKED_HOSTS.indexOf(host) !== -1){
+            playHLS(video, withProxy(first), true);
+          } else {
+            playHLS(video, first, false);
+          }
         } else {
           playNative(video, first);
         }
@@ -204,7 +236,12 @@ function assistir(link){
   }
 
   if(isHLS(link)){
-    playHLS(video, link);
+    const host = getHost(link);
+    if(BLOCKED_HOSTS.indexOf(host) !== -1){
+      playHLS(video, withProxy(link), true);
+    } else {
+      playHLS(video, link, false);
+    }
   } else {
     playNative(video, link, undefined);
   }
