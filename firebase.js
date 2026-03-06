@@ -137,6 +137,15 @@ function proxyCandidates(target){
   return result;
 }
 
+function extractIframeSrc(input){
+  const s = String(input || "");
+  if(s.toLowerCase().includes("<iframe")){
+    const m = s.match(/src\s*=\s*["'`]\s*([^"'`]+)\s*["'`]/i);
+    if(m && m[1]) return normalizeUrl(m[1]);
+  }
+  return normalizeUrl(s);
+}
+
 function resetVideo(video){
   try{
     video.pause();
@@ -148,6 +157,34 @@ function resetVideo(video){
     src.removeAttribute("type");
   }
   video.load();
+}
+
+function showVideo(){
+  var v = document.getElementById("video");
+  var f = document.getElementById("framePlayer");
+  if(f){
+    f.removeAttribute("src");
+    f.style.display = "none";
+  }
+  if(v){
+    v.style.display = "block";
+  }
+}
+
+function showIframe(url){
+  var v = document.getElementById("video");
+  var f = document.getElementById("framePlayer");
+  if(hls){
+    hls.destroy();
+  }
+  if(v){
+    try{ v.pause(); }catch(e){}
+    v.style.display = "none";
+  }
+  if(f){
+    f.src = url;
+    f.style.display = "block";
+  }
 }
 
 function playNative(video, url, mime){
@@ -221,14 +258,25 @@ function assistir(link){
   video.setAttribute("playsinline","true");
   video.setAttribute("webkit-playsinline","true");
   video.crossOrigin = "anonymous";
-  link = normalizeUrl(link);
+  link = extractIframeSrc(link);
 
   // Se já existir player anterior, destruir
   if(hls){
     hls.destroy();
   }
 
+  if(!link){
+    alert("Link inválido");
+    return;
+  }
+
+  if(!isM3U(link) && !isHLS(link) && /^https?:\/\//i.test(link)){
+    showIframe(link);
+    return;
+  }
+
   if(isM3U(link)){
+    showVideo();
     const candidatesM3U = proxyCandidates(link);
     let fetched = false;
     const tryFetchSeq = (i) => {
@@ -263,9 +311,12 @@ function assistir(link){
   }
 
   if(isHLS(link)){
+    showVideo();
     const urls = proxyCandidates(link);
     startHLSWithCandidates(video, urls);
   } else {
+    showIframe(link);
+    return;
     playNative(video, link, undefined);
   }
 }
