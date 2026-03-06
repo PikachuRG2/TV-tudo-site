@@ -69,6 +69,8 @@ var vjsPlayer;
 
 const WORKER_PREFIX = "https://listaiptv38.rafael2019rg.workers.dev/";
 const PROXY_PREFIX = "https://cors.isomorphic-git.org/";
+const WORKER_REFERER = "https://rg2tvpro.blogspot.com/";
+const WORKER_UA = "Mozilla/5.0";
 
 function normalizeUrl(url){
   let u = String(url || "").trim();
@@ -109,7 +111,14 @@ function withProxy(url){
   const u = normalizeUrl(url);
   if(WORKER_PREFIX){
     const w = WORKER_PREFIX.endsWith("/") ? WORKER_PREFIX : (WORKER_PREFIX + "/");
-    return w + "?url=" + encodeURIComponent(u);
+    const cookie = (typeof localStorage !== "undefined" ? localStorage.getItem("WORKER_COOKIE") : "") || "";
+    const params = new URLSearchParams();
+    params.set("url", u);
+    params.set("referer", WORKER_REFERER);
+    params.set("ua", WORKER_UA);
+    params.set("origin", window.location.origin);
+    if(cookie) params.set("cookie", cookie);
+    return w + "?" + params.toString();
   }
   const p = PROXY_PREFIX.endsWith("/") ? PROXY_PREFIX : (PROXY_PREFIX + "/");
   if(/^https?:\/\//i.test(u)) return p + u;
