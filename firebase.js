@@ -66,31 +66,105 @@ function carregar(cat){
 
 var hls;
 
+function normalizeUrl(url){
+  let u = String(url || "").trim();
+  u = u.replace(/\\/g, "/");
+  u = u.replace(/^https:\/*/i, "https://");
+  u = u.replace(/^http:\/*/i, "http://");
+  return u;
+}
+
+function isM3U(url){
+  return /\.m3u($|\?)/i.test(url);
+}
+
+function isHLS(url){
+  return /\.m3u8($|\?)/i.test(url);
+}
+
+function parseM3U(text){
+  const lines = text.split(/\r?\n/);
+  const urls = [];
+  for(let i=0;i<lines.length;i++){
+    const line = lines[i].trim();
+    if(!line || line.startsWith("#")) continue;
+    urls.push(line);
+  }
+  return urls;
+}
+
+function resetVideo(video){
+  try{
+    video.pause();
+  }catch(e){}
+  video.removeAttribute("src");
+  video.load();
+}
+
+function playNative(video, url, mime){
+  resetVideo(video);
+  video.src = url;
+  if(mime){
+    try{ video.type = mime; }catch(e){}
+  }
+  video.play().catch(()=>{});
+}
+
+function playHLS(video, url){
+  if(hls){
+    hls.destroy();
+  }
+  if(Hls.isSupported()){
+    hls = new Hls({
+      maxBufferLength: 10,
+      maxMaxBufferLength: 20,
+      startLevel: -1,
+      liveSyncDurationCount: 3
+    });
+    hls.loadSource(url);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, function(){
+      video.play().catch(()=>{});
+    });
+  } else {
+    playNative(video, url, "application/vnd.apple.mpegurl");
+  }
+}
+
 function assistir(link){
   var video = document.getElementById("video");
+  link = normalizeUrl(link);
 
   // Se já existir player anterior, destruir
   if(hls){
     hls.destroy();
   }
 
-  if(Hls.isSupported()){
-    hls = new Hls({
-      maxBufferLength: 10,        // menor buffer = inicia mais rápido
-      maxMaxBufferLength: 20,
-      startLevel: -1,
-      liveSyncDurationCount: 3    // mais rápido em canais ao vivo
-    });
+  if(isM3U(link)){
+    fetch(link)
+      .then(r=>r.text())
+      .then(txt=>{
+        const entries = parseM3U(txt);
+        if(entries.length === 0){
+          alert("Playlist M3U vazia");
+          return;
+        }
+        const first = normalizeUrl(entries[0]);
+        if(isHLS(first)){
+          playHLS(video, first);
+        } else {
+          playNative(video, first);
+        }
+      })
+      .catch(()=>{
+        alert("Não foi possível abrir a playlist .m3u");
+      });
+    return;
+  }
 
-    hls.loadSource(link);
-    hls.attachMedia(video);
-
-    hls.on(Hls.Events.MANIFEST_PARSED, function() {
-      video.play();
-    });
-
+  if(isHLS(link)){
+    playHLS(video, link);
   } else {
-    video.src = link;
-    video.play();
+    playNative(video, link, "video/mp2t");
   }
 }
