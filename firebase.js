@@ -65,6 +65,9 @@ function carregar(cat){
 }
 
 var hls;
+var vjsPlayer;
+
+const PROXY_PREFIX = "https://cors.isomorphic-git.org/";
 
 function normalizeUrl(url){
   let u = String(url || "").trim();
@@ -93,6 +96,21 @@ function parseM3U(text){
   return urls;
 }
 
+function resolveUrl(base, ref){
+  try{
+    return new URL(ref, base).href;
+  }catch(e){
+    return ref;
+  }
+}
+
+function withProxy(url){
+  const u = normalizeUrl(url);
+  const prefix = PROXY_PREFIX.endsWith("/") ? PROXY_PREFIX : (PROXY_PREFIX + "/");
+  if(/^https?:\/\//i.test(u)) return prefix + u;
+  return u;
+}
+
 function resetVideo(video){
   try{
     video.pause();
@@ -110,10 +128,28 @@ function playNative(video, url, mime){
   video.play().catch(()=>{});
 }
 
-function playHLS(video, url){
+function playWithVideoJS(video, url){
+  if(typeof window.videojs !== "function") return false;
+  try{
+    if(vjsPlayer){
+      vjsPlayer.src({ src: url, type: "application/x-mpegURL" });
+      vjsPlayer.play();
+    } else {
+      vjsPlayer = window.videojs(video, { liveui: true });
+      vjsPlayer.src({ src: url, type: "application/x-mpegURL" });
+      vjsPlayer.play();
+    }
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+function playHLS(video, url, proxied){
   if(hls){
     hls.destroy();
   }
+  if(playWithVideoJS(video, url)) return;
   if(Hls.isSupported()){
     hls = new Hls({
       maxBufferLength: 10,
@@ -125,6 +161,24 @@ function playHLS(video, url){
     hls.attachMedia(video);
     hls.on(Hls.Events.MANIFEST_PARSED, function(){
       video.play().catch(()=>{});
+    });
+    hls.on(Hls.Events.ERROR, function(_, data){
+      if(!data) return;
+      if(data.fatal){
+        if(data.type === Hls.ErrorTypes.NETWORK_ERROR){
+          if(!proxied){
+            hls.destroy();
+            playHLS(video, withProxy(url), true);
+            return;
+          }
+          hls.startLoad();
+        } else if(data.type === Hls.ErrorTypes.MEDIA_ERROR){
+          hls.recoverMediaError();
+        } else {
+          hls.destroy();
+          playNative(video, url, "application/vnd.apple.mpegurl");
+        }
+      }
     });
   } else {
     playNative(video, url, "application/vnd.apple.mpegurl");
@@ -149,21 +203,40 @@ function assistir(link){
           alert("Playlist M3U vazia");
           return;
         }
-        const first = normalizeUrl(entries[0]);
+        const raw = entries[0];
+        const first = normalizeUrl(resolveUrl(link, raw));
         if(isHLS(first)){
-          playHLS(video, first);
+          playHLS(video, first, false);
         } else {
           playNative(video, first);
         }
       })
       .catch(()=>{
-        alert("Não foi possível abrir a playlist .m3u");
+        fetch(withProxy(link))
+          .then(r=>r.text())
+          .then(txt=>{
+            const entries = parseM3U(txt);
+            if(entries.length === 0){
+              alert("Playlist M3U vazia");
+              return;
+            }
+            const raw = entries[0];
+            const first = normalizeUrl(resolveUrl(link, raw));
+            if(isHLS(first)){
+              playHLS(video, withProxy(first), true);
+            } else {
+              playNative(video, first);
+            }
+          })
+          .catch(()=>{
+            alert("Não foi possível abrir a playlist .m3u");
+          });
       });
     return;
   }
 
   if(isHLS(link)){
-    playHLS(video, link);
+    playHLS(video, link, false);
   } else {
     playNative(video, link, "video/mp2t");
   }

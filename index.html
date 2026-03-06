@@ -7,6 +7,7 @@
 
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="style.css">
+<link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
@@ -25,7 +26,7 @@
 <div id="app" style="display:none;">
 
 <div class="player">
-<video id="video" controls></video>
+<video id="video" class="video-js vjs-default-skin" controls></video>
 </div>
 
 <div class="categorias">
@@ -38,6 +39,7 @@
 </div>
 
 <script src="firebase.js"></script>
+<script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
 
 <script>
 if("serviceWorker" in navigator){
