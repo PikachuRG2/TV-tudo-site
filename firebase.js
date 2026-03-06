@@ -66,6 +66,14 @@ function carregar(cat){
 
 var hls;
 
+function normalizeUrl(url){
+  let u = String(url || "").trim();
+  u = u.replace(/\\/g, "/");
+  u = u.replace(/^https:\/*/i, "https://");
+  u = u.replace(/^http:\/*/i, "http://");
+  return u;
+}
+
 function isM3U(url){
   return /\.m3u($|\?)/i.test(url);
 }
@@ -83,6 +91,14 @@ function parseM3U(text){
     urls.push(line);
   }
   return urls;
+}
+
+function resolveUrl(base, ref){
+  try{
+    return new URL(ref, base).href;
+  }catch(e){
+    return ref;
+  }
 }
 
 function resetVideo(video){
@@ -121,6 +137,7 @@ function playHLS(video, url){
       if(!data) return;
       if(data.fatal){
         if(data.type === Hls.ErrorTypes.NETWORK_ERROR){
+          alert("Erro de rede ao carregar HLS. O servidor pode bloquear CORS/Referer.");
           hls.startLoad();
         } else if(data.type === Hls.ErrorTypes.MEDIA_ERROR){
           hls.recoverMediaError();
@@ -140,6 +157,7 @@ function assistir(link){
   video.setAttribute("playsinline","true");
   video.setAttribute("webkit-playsinline","true");
   video.crossOrigin = "anonymous";
+  link = normalizeUrl(link);
 
   // Se já existir player anterior, destruir
   if(hls){
@@ -155,7 +173,7 @@ function assistir(link){
           alert("Playlist M3U vazia");
           return;
         }
-        const first = entries[0];
+        const first = normalizeUrl(resolveUrl(link, entries[0]));
         if(isHLS(first)){
           playHLS(video, first);
         } else {
