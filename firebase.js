@@ -271,7 +271,7 @@ function assistir(link){
   }
 
   if(!isM3U(link) && !isHLS(link) && /^https?:\/\//i.test(link)){
-    showIframe(link);
+    openPage(link);
     return;
   }
 
@@ -315,8 +315,59 @@ function assistir(link){
     const urls = proxyCandidates(link);
     startHLSWithCandidates(video, urls);
   } else {
-    showIframe(link);
-    return;
     playNative(video, link, undefined);
   }
+}
+
+function injectBase(html, baseUrl){
+  const hasHead = /<head[^>]*>/i.test(html);
+  const baseTag = `<base href="${baseUrl}">`;
+  if(hasHead){
+    return html.replace(/<head[^>]*>/i, (m)=> m + baseTag);
+  }
+  return baseTag + html;
+}
+
+function stripMetaCSP(html){
+  return html.replace(/<meta[^>]+http-equiv=["']?Content-Security-Policy["']?[^>]*>/ig, "");
+}
+
+function openPage(url){
+  const candidates = proxyCandidates(url);
+  const f = document.getElementById("framePlayer");
+  const v = document.getElementById("video");
+  if(v){
+    try{ v.pause(); }catch(e){}
+    v.style.display = "none";
+  }
+  let done = false;
+  const tryFetch = (i) => {
+    if(done) return;
+    if(i >= candidates.length){
+      if(f){
+        f.src = url;
+        f.style.display = "block";
+      } else {
+        window.open(url, "_blank");
+      }
+      return;
+    }
+    fetch(candidates[i])
+      .then(r=>r.text())
+      .then(txt=>{
+        done = true;
+        let html = txt;
+        html = stripMetaCSP(html);
+        html = injectBase(html, url);
+        if(f){
+          f.removeAttribute("src");
+          f.srcdoc = html;
+          f.style.display = "block";
+        }
+      })
+      .catch(()=>{
+        tryFetch(i+1);
+      });
+  };
+  tryFetch(0);
 }
