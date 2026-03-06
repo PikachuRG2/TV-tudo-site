@@ -66,11 +66,9 @@ function carregar(cat){
 
 var hls;
 
-const PROXY_PREFIX = "https://listaiptv38.rafael2019rg.workers.dev/";
+const PROXY_PREFIX = "https://cors.isomorphic-git.org/";
 const PROXIES = [
-  { base: PROXY_PREFIX, mode: "path" },
-  { base: "https://cors.isomorphic-git.org/", mode: "path" },
-  { base: PROXY_PREFIX, mode: "query" }
+  { base: PROXY_PREFIX, mode: "path" }
 ];
 const BLOCKED_HOSTS = ["cdn.jmvstream.com","jmvstream.com"];
 
